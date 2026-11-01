@@ -1,0 +1,37 @@
+name: Deploy EDEN LENS to Netlify
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: eden-lens-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate static site
+        run: node scripts/validate.mjs
+      - name: Check Netlify authentication
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo 'NETLIFY_AUTH_TOKEN is missing; set it in repository Actions secrets' >&2
+            exit 1
+          fi
+      - name: Deploy EDEN LENS only
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: a2203a0e-bdc1-4958-baee-f28e398e2646
+        run: npx --yes netlify-cli@23 deploy --prod --dir=site --site="$NETLIFY_SITE_ID" --message="EDEN LENS $GITHUB_SHA"
+      - name: Verify public site
+        run: |
+          curl --fail --location --retry 3 --retry-delay 3 --max-time 20 https://eden-lens.netlify.app/ -o /tmp/eden-response.html
+          grep -q 'EDEN LENS' /tmp/eden-response.html
