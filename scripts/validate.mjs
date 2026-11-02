@@ -67,4 +67,8 @@ check(html.includes("alert('画像ファイルを選択してください')"),'I
 check(html.includes('if(startToken!==loopToken)return;if(stream)'), 'Stale camera failures must not reset newer camera sessions');
 check(html.includes('if(scanId!==latestScanId)return;lastPredictions=[]'), 'Stale scan errors must not reset newer predictions');
 check(html.includes("if(scanId!==latestScanId)return;$('result').classList.remove('hidden')"), 'Stale scans must not render results');
+check(html.includes("++loopToken; lastImage=null;lastPredictions=[]"),'Photo scan must clear previous scan state');
+check(html.includes('await img.decode();if(scanId!==latestScanId)return'),'Cancelled photo decode must not change canvas');
+check(html.includes('model=await getModel();if(scanId!==latestScanId)return;const predictions='),'Cancelled model load must not begin photo detection');
+check(html.includes("if(!img.naturalWidth||!img.naturalHeight)throw Error"),'Invalid decoded image dimensions must be rejected');
 console.log(`EDEN LENS validation passed: ${count} checks`);
