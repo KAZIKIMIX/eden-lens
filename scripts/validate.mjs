@@ -60,4 +60,8 @@ check(html.includes('audio:false'),'Camera audio must be disabled');
 check(html.includes('getTracks().forEach(t=>t.stop())'),'Camera stream cleanup missing');
 check(html.includes('encodeURIComponent(q)'),'Search URL encoding missing');
 check(html.includes('localStorage'),'Local notes storage missing');
+const captureHandler=html.match(/\$\('capture'\)\.onclick=async\(\)=>\{([\s\S]*?)\};\$\('save'\)/)?.[1];
+check(Boolean(captureHandler),'Missing capture handler');
+check(captureHandler.indexOf('v.readyState<2')>=0&&captureHandler.indexOf('v.readyState<2')<captureHandler.indexOf('++loopToken'),'Camera readiness must be checked before stopping detection');
+check(html.includes("alert('画像ファイルを選択してください')"),'Invalid image upload must show feedback');
 console.log(`EDEN LENS validation passed: ${count} checks`);
