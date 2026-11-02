@@ -1,1 +1,63 @@
-import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';const dir=path.resolve('site');for(const f of ['index.html','manifest.webmanifest','sw.js','icon.svg','_headers','netlify.toml']){if(!fs.existsSync(path.join(dir,f)))throw Error('Missing '+f)}const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];if(!scripts.length)throw Error('No inline script');for(let i=0;i<scripts.length;i++){const p=path.join('/tmp','eden-check-'+process.pid+'-'+i+'.js');try{fs.writeFileSync(p,scripts[i][1]);execFileSync(process.execPath,['--check',p])}finally{if(fs.existsSync(p))fs.unlinkSync(p)}}execFileSync(process.execPath,['--check',path.join(dir,'sw.js')]);JSON.parse(fs.readFileSync(path.join(dir,'manifest.webmanifest'),'utf8'));console.log('EDEN LENS checks passed')
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import {execFileSync} from 'node:child_process';
+
+const dir=path.resolve('site');
+const required=['index.html','manifest.webmanifest','sw.js','icon.svg','_headers','netlify.toml'];
+let count=0;
+function check(condition,message){count++;if(!condition)throw Error(`Check ${count} failed: ${message}`)}
+for(const file of required)check(fs.existsSync(path.join(dir,file)),`Missing ${file}`);
+const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');
+const sw=fs.readFileSync(path.join(dir,'sw.js'),'utf8');
+const manifest=JSON.parse(fs.readFileSync(path.join(dir,'manifest.webmanifest'),'utf8'));
+const headers=fs.readFileSync(path.join(dir,'_headers'),'utf8');
+const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
+check(scripts.length>0,'Missing application JavaScript');
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'eden-validate-'));
+try{
+  for(let i=0;i<scripts.length;i++){
+    const filename=path.join(temp,`inline-${i}.js`);
+    fs.writeFileSync(filename,scripts[i][1]);
+    execFileSync(process.execPath,['--check',filename],{stdio:'pipe'});
+    count++;
+  }
+}finally{fs.rmSync(temp,{recursive:true,force:true})}
+execFileSync(process.execPath,['--check',path.join(dir,'sw.js')],{stdio:'pipe'});count++;
+const ids=[...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match=>match[1]);
+const idSet=new Set(ids);
+check(ids.length===idSet.size,'Duplicate HTML IDs');
+for(const id of ids)check(/^[A-Za-z][A-Za-z0-9_-]*$/.test(id),`Invalid ID: ${id}`);
+for(const script of scripts){
+  for(const match of script[1].matchAll(/\$\(['"]([^'"]+)['"]\)/g)){
+    check(idSet.has(match[1]),`Missing DOM element referenced by JS: ${match[1]}`);
+  }
+}
+for(const id of ['video','overlay','snapshot','intro','start','capture','result','note','save','file','introFile','demo','status'])check(idSet.has(id),`Missing critical UI element: ${id}`);
+check(/<html\s+lang=["']ja["']/.test(html),'Missing Japanese document language');
+check(/name=["']viewport["']/.test(html),'Missing responsive viewport');
+check(/name=["']theme-color["']/.test(html),'Missing theme color');
+check(/rel=["']manifest["']/.test(html),'Manifest not linked');
+check(manifest.name==='EDEN LENS','Unexpected PWA name');
+check(manifest.display==='standalone','PWA display mode');
+check(manifest.start_url==='/'&&manifest.scope==='/','Unexpected PWA scope');
+check(Array.isArray(manifest.icons)&&manifest.icons.length>0,'Missing PWA icon');
+for(const icon of manifest.icons){
+  check(typeof icon.src==='string'&&icon.src.startsWith('/'),'PWA icon must be local');
+  check(fs.existsSync(path.join(dir,icon.src.slice(1))),`Missing icon asset: ${icon.src}`);
+}
+check(sw.includes('self.addEventListener(\'install\''),'Missing SW install');
+check(sw.includes('self.addEventListener(\'activate\''),'Missing SW activate');
+check(sw.includes('self.addEventListener(\'fetch\''),'Missing SW fetch');
+check(sw.includes('request.method!==\'GET\''),'SW must avoid caching non-GET requests');
+check(sw.includes('request.headers.has(\'authorization\')'),'SW must avoid authenticated requests');
+check(sw.includes('no-store'),'SW must respect no-store');
+check(headers.includes('X-Content-Type-Options'),'Missing content type protection');
+check(headers.includes('Referrer-Policy'),'Missing referrer policy');
+check(headers.includes('Permissions-Policy'),'Missing permissions policy');
+check(html.includes("x.class!=='person'"),'Person filtering missing');
+check(html.includes('audio:false'),'Camera audio must be disabled');
+check(html.includes('getTracks().forEach(t=>t.stop())'),'Camera stream cleanup missing');
+check(html.includes('encodeURIComponent(q)'),'Search URL encoding missing');
+check(html.includes('localStorage'),'Local notes storage missing');
+console.log(`EDEN LENS validation passed: ${count} checks`);
