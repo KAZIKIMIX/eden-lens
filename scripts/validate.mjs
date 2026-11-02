@@ -75,4 +75,7 @@ check(html.includes('++loopToken;lastPredictions=[];selectedIndex=-1;selectedLab
 check(html.includes('if(scanId!==latestScanId)return;const detected=await m.detect(c,20,.25)'),'Cancelled camera capture must not run model detection');
 check(html.includes('function start(){++latestScanId;const startToken=++loopToken'),'Camera restart must invalidate photo scans');
 check(html.includes("await $('video').play();if(startToken!==loopToken)return"),'Stale camera playback must not update the UI');
+check(html.includes('const lookupScanId=latestScanId;const btn='),'Wikipedia lookup must capture active scan identity');
+check(html.includes('if(lookupScanId!==latestScanId)return;const page='),'Stale Wikipedia responses must not update current scan');
+check(html.includes("if(lookupScanId===latestScanId)$('infoText').textContent='検索できませんでした"),'Stale Wikipedia failures must not update current scan');
 console.log(`EDEN LENS validation passed: ${count} checks`);
