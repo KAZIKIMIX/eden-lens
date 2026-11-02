@@ -34,4 +34,7 @@ jobs:
       - name: Verify public site
         run: |
           curl --fail --location --retry 3 --retry-delay 3 --max-time 20 https://eden-lens.netlify.app/ -o /tmp/eden-response.html
-          grep -q 'EDEN LENS' /tmp/eden-response.html
+          grep -q 'id="snapshot"' /tmp/eden-response.html
+          grep -q 'id="capture"' /tmp/eden-response.html
+          curl --fail --location --retry 3 --retry-delay 3 --max-time 20 https://eden-lens.netlify.app/manifest.webmanifest -o /tmp/eden-manifest.json
+          node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('/tmp/eden-manifest.json','utf8'));if(m.name!=='EDEN LENS'||m.display!=='standalone')process.exit(1)"
