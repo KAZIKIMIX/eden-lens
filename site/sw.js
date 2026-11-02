@@ -1,6 +1,7 @@
-const CACHE='eden-lens-v2.5';
+const CACHE='eden-lens-v2.6';
 const CORE=['/','/index.html','/manifest.webmanifest','/icon.svg'];
 const MAX_ENTRIES=40;
+const PUBLIC_ASSETS=new Set(CORE);
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()));
 });
@@ -10,7 +11,10 @@ self.addEventListener('activate',event=>{
 self.addEventListener('fetch',event=>{
   const request=event.request;
   const url=new URL(request.url);
-  if(request.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/')||request.headers.has('authorization')||request.cache==='no-store')return;
+  if(request.method!=='GET'||url.origin!==self.location.origin||request.headers.has('authorization')||request.cache==='no-store')return;
+  const isNavigation=request.mode==='navigate';
+  const assetPath=isNavigation?'/':url.pathname;
+  if(!PUBLIC_ASSETS.has(assetPath)||(!isNavigation&&url.search))return;
   event.respondWith((async()=>{
     try{
       const response=await fetch(request);
@@ -19,7 +23,7 @@ self.addEventListener('fetch',event=>{
         event.waitUntil((async()=>{
           try{
             const cache=await caches.open(CACHE);
-            await cache.put(request,copy);
+            await cache.put(isNavigation?'/':request,copy);
             const keys=await cache.keys();
             const removable=keys.filter(key=>!CORE.includes(new URL(key.url).pathname));
             const excess=Math.max(0,keys.length-MAX_ENTRIES);
@@ -29,7 +33,8 @@ self.addEventListener('fetch',event=>{
       }
       return response;
     }catch(error){
-      const cached=await caches.match(request);
+      const cache=await caches.open(CACHE);
+      const cached=await cache.match(isNavigation?'/':request);
       if(cached)return cached;
       throw error;
     }
