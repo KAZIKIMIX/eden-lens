@@ -71,4 +71,6 @@ check(html.includes("++loopToken; lastImage=null;lastPredictions=[]"),'Photo sca
 check(html.includes('await img.decode();if(scanId!==latestScanId)return'),'Cancelled photo decode must not change canvas');
 check(html.includes('model=await getModel();if(scanId!==latestScanId)return;const predictions='),'Cancelled model load must not begin photo detection');
 check(html.includes("if(!img.naturalWidth||!img.naturalHeight)throw Error"),'Invalid decoded image dimensions must be rejected');
+check(html.includes('++loopToken;lastPredictions=[];selectedIndex=-1;selectedLabel='),'Camera capture must reset previous detection selection');
+check(html.includes('if(scanId!==latestScanId)return;const detected=await m.detect(c,20,.25)'),'Cancelled camera capture must not run model detection');
 console.log(`EDEN LENS validation passed: ${count} checks`);
