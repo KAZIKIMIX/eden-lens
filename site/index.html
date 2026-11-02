@@ -19,13 +19,13 @@ $('scanBoxes').addEventListener('click',e=>{const rect=e.currentTarget.getBoundi
 async function scanUploadedFile(file){
  if(!file)return;if(!file.type.startsWith('image/')){alert('画像ファイルを選択してください');return}if(file.size>20*1024*1024){alert('画像は20MB以下を選んでください');return;}
  const scanId=++latestScanId;
- ++loopToken; if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} $('flip').classList.add('hidden');$('pause').classList.add('hidden'); $('overlay').getContext('2d').clearRect(0,0,$('overlay').width,$('overlay').height);
+ ++loopToken; lastImage=null;lastPredictions=[];selectedIndex=-1;selectedLabel='';$('snapshot').width=0;$('snapshot').height=0; if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} $('flip').classList.add('hidden');$('pause').classList.add('hidden'); $('overlay').getContext('2d').clearRect(0,0,$('overlay').width,$('overlay').height);
  $('intro').classList.add('hidden');$('result').classList.remove('hidden');editingIndex=-1;$('noteSearchWrap').classList.add('hidden');$('noteTools').style.display='none';$('status').textContent='PHOTO LOADING';$('scanView').style.display='none';$('resultTitle').textContent='画像を解析中…';$('resultText').textContent='初回は認識モデルの読み込みに時間がかかります。画像は認識APIへ送信しません。';
  try{
   // The first photo scan also loads the AI model lazily via getModel().
   const url=URL.createObjectURL(file);let img=new Image();
-  try{img.src=url;await img.decode();const c=$('snapshot');const scale=Math.min(1,960/img.naturalWidth);c.width=Math.round(img.naturalWidth*scale);c.height=Math.round(img.naturalHeight*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height)}finally{URL.revokeObjectURL(url)}
-  model=await getModel();const predictions=visiblePredictions(await model.detect($('snapshot'),20,.25));if(scanId!==latestScanId)return;
+  try{img.src=url;await img.decode();if(scanId!==latestScanId)return;if(!img.naturalWidth||!img.naturalHeight)throw Error('画像のサイズを読み取れません');const c=$('snapshot');const scale=Math.min(1,960/img.naturalWidth);c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height)}finally{URL.revokeObjectURL(url)}
+  model=await getModel();if(scanId!==latestScanId)return;const predictions=visiblePredictions(await model.detect($('snapshot'),20,.25));if(scanId!==latestScanId)return;
   lastPredictions=predictions;lastImage=$('snapshot').toDataURL('image/jpeg',.8);$('details').replaceChildren();selectedLabel='';selectedIndex=-1;$('infoText').textContent='';showScanImage();
   for(const [i,m] of predictions.slice(0,8).entries()){const row=document.createElement('div');row.className='item';const t=document.createElement('span');t.textContent=(labels[m.class]||m.class)+' ('+Math.round(m.score*100)+'%)';const b=document.createElement('button');b.textContent='選択';b.onclick=()=>choosePrediction(i);row.append(t,b);$('details').append(row)}
   $('resultTitle').textContent=predictions.length?'認識結果：'+(labels[predictions[0].class]||predictions[0].class):'認識できませんでした';$('resultText').textContent=predictions.length?predictions.map(x=>(labels[x.class]||x.class)+' '+Math.round(x.score*100)+'%').join(' / '):'現在のモデルでは検出できません。';$('status').textContent='PHOTO SCANNED';
