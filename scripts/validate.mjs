@@ -64,4 +64,7 @@ const captureHandler=html.match(/\$\('capture'\)\.onclick=async\(\)=>\{([\s\S]*?
 check(Boolean(captureHandler),'Missing capture handler');
 check(captureHandler.indexOf('v.readyState<2')>=0&&captureHandler.indexOf('v.readyState<2')<captureHandler.indexOf('++loopToken'),'Camera readiness must be checked before stopping detection');
 check(html.includes("alert('画像ファイルを選択してください')"),'Invalid image upload must show feedback');
+check(html.includes('if(startToken!==loopToken)return;if(stream)'), 'Stale camera failures must not reset newer camera sessions');
+check(html.includes('if(scanId!==latestScanId)return;lastPredictions=[]'), 'Stale scan errors must not reset newer predictions');
+check(html.includes("if(scanId!==latestScanId)return;$('result').classList.remove('hidden')"), 'Stale scans must not render results');
 console.log(`EDEN LENS validation passed: ${count} checks`);
