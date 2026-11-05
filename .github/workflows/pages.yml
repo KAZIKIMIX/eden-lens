@@ -1,0 +1,42 @@
+name: Deploy EDEN LENS to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: eden-lens-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate app
+        run: |
+          node scripts/validate.mjs
+          node --test scripts/sw.test.mjs
+      - name: Build Pages bundle
+        run: |
+          node scripts/build-pages.mjs
+          node --check pages-dist/sw.js
+          node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('pages-dist/manifest.webmanifest'));if(m.start_url!=='./'||m.scope!=='./')process.exit(1)"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-dist
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
