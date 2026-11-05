@@ -28,6 +28,8 @@ jobs:
           node --check pages-dist/sw.js
           node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('pages-dist/manifest.webmanifest'));if(m.start_url!=='./'||m.scope!=='./')process.exit(1)"
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: pages-dist
