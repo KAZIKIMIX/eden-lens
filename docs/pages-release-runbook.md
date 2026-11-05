@@ -42,3 +42,11 @@
 | 15 | 公開・復旧手順書 | 完了 | この文書 |
 
 **運用原則:** 設定ファイルの存在と本番動作の成功を混同しない。未検証を完了として数えない。
+
+## 2026-11-06 公開障害の確定根拠
+- GitHub Actions run 42125800392: アプリ検証・Pages bundle生成は成功。`actions/configure-pages@v5` は `Get Pages site failed: Not Found` で失敗。
+- GitHub Actions run 42126093476: `enablement: true` に変更して再試行。Pagesサイト作成で `Resource not accessible by integration` が発生。自動有効化には権限が足りない。
+- GitHub Actions run 42126118515: 同じPages設定権限で失敗。`deploy` は未実行。
+- Netlify run 42125800295: `NETLIFY_AUTH_TOKEN` が空で認証チェックに失敗。Netlifyの自動pushデプロイはコミット `03ef0e88d9ddf1bbeee504c4d5af8ad0259256d0` で停止し、手動実行のみ維持。
+- 次の解除操作: リポジトリの管理者が **Settings → Pages → Build and deployment → Source → GitHub Actions** を設定して保存する。これができれば `Actions → Deploy EDEN LENS to GitHub Pages → Run workflow (main)` を実行して確認する。
+- 誤認防止: PagesのURLは deploy成功とHTTP確認までは未公開扱い。No.1～13は公開・実機検証まで未完了、No.14は自動失敗停止として完了、No.15は完了。
